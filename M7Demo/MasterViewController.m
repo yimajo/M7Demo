@@ -7,12 +7,37 @@
 //
 
 #import "MasterViewController.h"
+#import <CoreMotion/CoreMotion.h>
 
-#import "DetailViewController.h"
+@interface MasterViewController ()
 
-@interface MasterViewController () {
-    NSMutableArray *_objects;
-}
+
+@property (weak, nonatomic) IBOutlet UILabel *todayStepLabel;
+
+@property (weak, nonatomic) IBOutlet UILabel *stepCountLabel;
+
+
+@property (weak, nonatomic) IBOutlet UITableViewCell *activityStationaryCell;
+
+@property (weak, nonatomic) IBOutlet UILabel *activityStationaryLabel;
+
+
+@property (weak, nonatomic) IBOutlet UITableViewCell *activityWlkingCell;
+
+@property (weak, nonatomic) IBOutlet UILabel *activityWalkingLabel;
+
+@property (weak, nonatomic) IBOutlet UITableViewCell *activityRunningCell;
+
+@property (weak, nonatomic) IBOutlet UILabel *activityRunningLabel;
+
+@property (weak, nonatomic) IBOutlet UITableViewCell *activityAutomotiveCell;
+
+@property (weak, nonatomic) IBOutlet UILabel *activityAutomotiveLabel;
+
+@property (weak, nonatomic) IBOutlet UITableViewCell *activityUnknownCell;
+
+@property (weak, nonatomic) IBOutlet UILabel *activityUnknownLabel;
+
 @end
 
 @implementation MasterViewController
@@ -25,11 +50,8 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-	// Do any additional setup after loading the view, typically from a nib.
-    self.navigationItem.leftBarButtonItem = self.editButtonItem;
-
-    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(insertNewObject:)];
-    self.navigationItem.rightBarButtonItem = addButton;
+    [self startStepCounting];
+    [self startActivity];
 }
 
 - (void)didReceiveMemoryWarning
@@ -38,76 +60,110 @@
     // Dispose of any resources that can be recreated.
 }
 
-- (void)insertNewObject:(id)sender
+#pragma mark - 
+
+//歩数計のカウントスタート
+- (void)startStepCounting
 {
-    if (!_objects) {
-        _objects = [[NSMutableArray alloc] init];
-    }
-    [_objects insertObject:[NSDate date] atIndex:0];
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
-    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-}
+    if([CMStepCounter isStepCountingAvailable])
+    {
+        CMStepCounter *stepCounter = [[CMStepCounter alloc] init];
+        [stepCounter startStepCountingUpdatesToQueue:[NSOperationQueue mainQueue]
+                                            updateOn:1
+                                         withHandler:^(NSInteger numberOfSteps, NSDate *timestamp, NSError *error)
+        {
+              if(!error) {
+              
+                  self.stepCountLabel.text = [NSString stringWithFormat:@"steps:%ld", numberOfSteps];
+              
+              } else {
+                  self.stepCountLabel.text = error.description;
 
-#pragma mark - Table View
+                  NSLog(@"error:%@", error);
+              }
+        }];
+        
+        NSDate *today = [[self class] today];
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
-{
-    return 1;
-}
-
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
-{
-    return _objects.count;
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell" forIndexPath:indexPath];
-
-    NSDate *object = _objects[indexPath.row];
-    cell.textLabel.text = [object description];
-    return cell;
-}
-
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the specified item to be editable.
-    return YES;
-}
-
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (editingStyle == UITableViewCellEditingStyleDelete) {
-        [_objects removeObjectAtIndex:indexPath.row];
-        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
+        [stepCounter queryStepCountStartingFrom:today to:[NSDate date] toQueue:[NSOperationQueue mainQueue] withHandler:^(NSInteger numberOfSteps, NSError *error)
+        {
+            if (!error) {
+                self.todayStepLabel.text = [NSString stringWithFormat:@"%ld", numberOfSteps];
+            } else {
+                self.todayStepLabel.text = error.description;
+            }
+        }];
     }
 }
 
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath
+//現在のActivityを取得するメソッドをスタート
+- (void)startActivity
 {
-}
-*/
 
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
+    CMMotionActivityManager *motionActivityManager = [[CMMotionActivityManager alloc] init];
+    
+    [motionActivityManager startActivityUpdatesToQueue:[NSOperationQueue mainQueue]
+                                           withHandler:^(CMMotionActivity *activity)
+    {
+        if (activity.stationary) {
+            self.activityStationaryCell.backgroundColor = [[self class] activeColor];
+            self.activityStationaryLabel.text = @"YES";
+        } else {
+            self.activityStationaryCell.backgroundColor = [UIColor clearColor];
+            self.activityStationaryLabel.text = @"NO";
+        }
+        
+        if (activity.walking) {
+            self.activityWlkingCell.backgroundColor = [[self class] activeColor];
+            self.activityWalkingLabel.text = @"YES";
+        } else {
+            self.activityWlkingCell.backgroundColor = [UIColor clearColor];
+            self.activityWalkingLabel.text = @"NO";
+        }
+        
+        if (activity.running) {
+            self.activityRunningCell.backgroundColor = [[self class] activeColor];
+            self.activityRunningLabel.text = @"YES";
+        } else {
+            self.activityRunningCell.backgroundColor = [UIColor clearColor];
+            self.activityRunningLabel.text = @"NO";
+        }
+        
+        if (activity.automotive) {
+            self.activityAutomotiveCell.backgroundColor = [[self class] activeColor];
+            self.activityAutomotiveLabel.text = @"YES";
+        } else {
+            self.activityAutomotiveCell.backgroundColor = [UIColor clearColor];
+            self.activityAutomotiveLabel.text = @"NO";
+        }
 
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+        if (activity.unknown) {
+            self.activityUnknownCell.backgroundColor = [[self class] activeColor];
+            self.activityUnknownLabel.text = @"YES";
+        } else {
+            self.activityUnknownCell.backgroundColor = [UIColor clearColor];
+            self.activityUnknownLabel.text = @"NO";
+        }
+
+    }];
+}
+
++ (UIColor *)activeColor
 {
-    if ([[segue identifier] isEqualToString:@"showDetail"]) {
-        NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
-        NSDate *object = _objects[indexPath.row];
-        [[segue destinationViewController] setDetailItem:object];
-    }
+    return [UIColor colorWithRed:0.169 green:0.808 blue:0.969 alpha:1.000];
+}
+
+//今日の0時のNSDateを返す
++ (NSDate *)today
+{
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+	[dateFormatter setTimeStyle:NSDateFormatterNoStyle];
+	[dateFormatter setDateStyle:NSDateFormatterMediumStyle];
+	
+	NSString *nowDateStr = [dateFormatter stringFromDate:[NSDate date]];
+	NSDate *nowDate = [dateFormatter dateFromString:nowDateStr];
+
+    return nowDate;
 }
 
 @end
