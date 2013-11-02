@@ -67,82 +67,98 @@
 {
     if([CMStepCounter isStepCountingAvailable])
     {
+        __weak MasterViewController *weakRefrencedViewController = self;
+
         CMStepCounter *stepCounter = [[CMStepCounter alloc] init];
+        
         [stepCounter startStepCountingUpdatesToQueue:[NSOperationQueue mainQueue]
                                             updateOn:1
                                          withHandler:^(NSInteger numberOfSteps, NSDate *timestamp, NSError *error)
         {
               if(!error) {
               
-                  self.stepCountLabel.text = [NSString stringWithFormat:@"steps:%ld", numberOfSteps];
-              
+                  //start後からのカウントをするはずだがqueryでの和と一致せず
+                  //精度も良くない気がするので余り役に立たないと思った方がいい
+                  weakRefrencedViewController.stepCountLabel.text = [NSString stringWithFormat:@"steps:%ld", numberOfSteps];
+
+                  //都度今日のstep数を取得したほうが正確な気がする
+                  [self todayStepWithStepCounter:stepCounter];
               } else {
-                  self.stepCountLabel.text = error.description;
+                  weakRefrencedViewController.stepCountLabel.text = error.description;
 
                   NSLog(@"error:%@", error);
               }
         }];
         
-        NSDate *today = [[self class] today];
-
-        [stepCounter queryStepCountStartingFrom:today to:[NSDate date] toQueue:[NSOperationQueue mainQueue] withHandler:^(NSInteger numberOfSteps, NSError *error)
-        {
-            if (!error) {
-                self.todayStepLabel.text = [NSString stringWithFormat:@"%ld", numberOfSteps];
-            } else {
-                self.todayStepLabel.text = error.description;
-            }
-        }];
+        [self todayStepWithStepCounter:stepCounter];
     }
+}
+
+- (void)todayStepWithStepCounter:(CMStepCounter *)stepCounter
+{
+    NSDate *today = [[self class] today];
+    
+    __weak MasterViewController *weakRefrencedViewController = self;
+
+    [stepCounter queryStepCountStartingFrom:today to:[NSDate date] toQueue:[NSOperationQueue mainQueue] withHandler:^(NSInteger numberOfSteps, NSError *error)
+     {
+         if (!error) {
+             weakRefrencedViewController.todayStepLabel.text = [NSString stringWithFormat:@"%ld", numberOfSteps];
+         } else {
+             weakRefrencedViewController.todayStepLabel.text = error.description;
+         }
+     }];
+
 }
 
 //現在のActivityを取得するメソッドをスタート
 - (void)startActivity
 {
-
+    __weak MasterViewController *weakRefrencedViewController = self;
+    
     CMMotionActivityManager *motionActivityManager = [[CMMotionActivityManager alloc] init];
     
     [motionActivityManager startActivityUpdatesToQueue:[NSOperationQueue mainQueue]
                                            withHandler:^(CMMotionActivity *activity)
     {
         if (activity.stationary) {
-            self.activityStationaryCell.backgroundColor = [[self class] activeColor];
-            self.activityStationaryLabel.text = @"YES";
+            weakRefrencedViewController.activityStationaryCell.backgroundColor = [[self class] activeColor];
+            weakRefrencedViewController.activityStationaryLabel.text = @"YES";
         } else {
-            self.activityStationaryCell.backgroundColor = [UIColor clearColor];
-            self.activityStationaryLabel.text = @"NO";
+            weakRefrencedViewController.activityStationaryCell.backgroundColor = [UIColor clearColor];
+            weakRefrencedViewController.activityStationaryLabel.text = @"NO";
         }
         
         if (activity.walking) {
-            self.activityWlkingCell.backgroundColor = [[self class] activeColor];
-            self.activityWalkingLabel.text = @"YES";
+            weakRefrencedViewController.activityWlkingCell.backgroundColor = [[self class] activeColor];
+            weakRefrencedViewController.activityWalkingLabel.text = @"YES";
         } else {
-            self.activityWlkingCell.backgroundColor = [UIColor clearColor];
-            self.activityWalkingLabel.text = @"NO";
+            weakRefrencedViewController.activityWlkingCell.backgroundColor = [UIColor clearColor];
+            weakRefrencedViewController.activityWalkingLabel.text = @"NO";
         }
         
         if (activity.running) {
-            self.activityRunningCell.backgroundColor = [[self class] activeColor];
-            self.activityRunningLabel.text = @"YES";
+            weakRefrencedViewController.activityRunningCell.backgroundColor = [[self class] activeColor];
+            weakRefrencedViewController.activityRunningLabel.text = @"YES";
         } else {
-            self.activityRunningCell.backgroundColor = [UIColor clearColor];
-            self.activityRunningLabel.text = @"NO";
+            weakRefrencedViewController.activityRunningCell.backgroundColor = [UIColor clearColor];
+            weakRefrencedViewController.activityRunningLabel.text = @"NO";
         }
         
         if (activity.automotive) {
-            self.activityAutomotiveCell.backgroundColor = [[self class] activeColor];
-            self.activityAutomotiveLabel.text = @"YES";
+            weakRefrencedViewController.activityAutomotiveCell.backgroundColor = [[self class] activeColor];
+            weakRefrencedViewController.activityAutomotiveLabel.text = @"YES";
         } else {
-            self.activityAutomotiveCell.backgroundColor = [UIColor clearColor];
-            self.activityAutomotiveLabel.text = @"NO";
+            weakRefrencedViewController.activityAutomotiveCell.backgroundColor = [UIColor clearColor];
+            weakRefrencedViewController.activityAutomotiveLabel.text = @"NO";
         }
 
         if (activity.unknown) {
-            self.activityUnknownCell.backgroundColor = [[self class] activeColor];
-            self.activityUnknownLabel.text = @"YES";
+            weakRefrencedViewController.activityUnknownCell.backgroundColor = [[self class] activeColor];
+            weakRefrencedViewController.activityUnknownLabel.text = @"YES";
         } else {
-            self.activityUnknownCell.backgroundColor = [UIColor clearColor];
-            self.activityUnknownLabel.text = @"NO";
+            weakRefrencedViewController.activityUnknownCell.backgroundColor = [UIColor clearColor];
+            weakRefrencedViewController.activityUnknownLabel.text = @"NO";
         }
 
     }];
